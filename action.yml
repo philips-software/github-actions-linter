@@ -1,0 +1,71 @@
+name: Github Actions validator
+description: Validate the Github Actions workflows
+
+inputs:
+  action-validator-version:
+    description: Version of Action-validator to use
+    default: 0.5.4
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Compute changed files
+      uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          github:
+            - added|modified: .github/**
+
+    - name: Install action-validator with asdf
+      if: steps.filter.outputs.github == 'true'
+      uses: asdf-vm/actions/install@v3
+      with:
+        tool_versions: |
+          action-validator ${{ inputs.action-validator-version }}
+
+    - name: Lint Actions
+      if: steps.filter.outputs.github == 'true'
+      shell: bash
+      run: |
+        echo -e '## :warning: Github Actions validator failed!\n' | tee actions-validator-outputs.txt
+
+        # Here we want to find all the Yaml files under .github/{workflows,actions}
+        # but we can't use 'find .github/workflows .github/actions'
+        # because it will fail if one of the folders doesn't exist (eg .github/actions is not always present)
+        find .github -type f \
+          -iwholename '.github/workflows/*.yml' -o -iwholename '.github/workflows/*.yaml' -o \
+          -iwholename '.github/actions/*.yml' -o -iwholename '.github/actions/*.yaml' \
+          | while read -r file; do
+
+            # We have to '|| true' or this command ends the loop in GHA
+            (action-validator "$file" 2>&1 || true) | tee actions-validator-tmp.txt
+
+            # If action-validator didn't produce outputs, it means there are no errors
+            test -z "$(cat actions-validator-tmp.txt)" && continue
+
+            echo -e "<details>\n<summary><code>$file</code></summary>\n<pre>" | tee -a actions-validator-outputs.txt
+            cat actions-validator-tmp.txt | tee -a actions-validator-outputs.txt
+            echo -e '\n</pre></details>' | tee -a actions-validator-outputs.txt
+        done
+
+        rm -f actions-validator-tmp.txt
+        if [[ $(cat actions-validator-outputs.txt | wc -l) -gt 2 ]]; then
+          exit 1
+        fi
+
+    - name: Post results in PR (failure)
+      if: failure() && steps.filter.outputs.github == 'true'
+      uses: thollander/actions-comment-pull-request@v2
+      with:
+        filePath: actions-validator-outputs.txt
+        comment_tag: actions-validator
+    - name: Post results in PR (success)
+      if: success() && steps.filter.outputs.github == 'true'
+      uses: thollander/actions-comment-pull-request@v2
+      with:
+        message: "## :white_check_mark: Github Actions validator succeed!"
+        comment_tag: actions-validator
