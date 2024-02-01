@@ -9,9 +9,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
     - name: Compute changed files
       uses: dorny/paths-filter@v2
       id: filter
@@ -69,3 +66,11 @@ runs:
       with:
         message: "## :white_check_mark: Github Actions validator succeed!"
         comment_tag: actions-validator
+
+    - name: Reset .tool-versions
+      if: steps.filter.outputs.github == 'true'
+      shell: bash
+      run: |
+        if git ls-files -m | grep -q ".tool-versions"; then
+          git checkout -- .tool-versions
+        fi
