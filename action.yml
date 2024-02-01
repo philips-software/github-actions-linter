@@ -67,10 +67,14 @@ runs:
         message: "## :white_check_mark: Github Actions validator succeed!"
         comment_tag: actions-validator
 
-    - name: Reset .tool-versions
-      if: steps.filter.outputs.github == 'true'
+    - name: Cleanup residual changes
+      if: success() || failure()
       shell: bash
       run: |
         if git ls-files -m | grep -q ".tool-versions"; then
           git checkout -- .tool-versions
+        fi
+
+        if [[ -f "actions-validator-outputs.txt" ]]; then
+          rm -f actions-validator-outputs.txt
         fi
