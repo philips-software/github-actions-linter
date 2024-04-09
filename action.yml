@@ -43,15 +43,18 @@ runs:
         comment = ""
         for file, errors in errors_by_file.items():
             file_comment_lines = [f"<details><summary><code>{file}</code></summary>"]
+            error_comments = []
             for error in errors:
                 url = f"https://github.com/${{ github.repository }}/blob/${{ github.sha }}/{file}#L{error['line']}"
                 snippet_lines = ["<pre>", *error["snippet"].split("\n"), "</pre>"]
-                file_comment_lines.extend([
+                error_comment = "<br />".join([
                     error["message"],
                     f"<a href={url}>View in file</a>",
                     "\n".join(snippet_lines),
-                    "<hr />"
                 ])
+                error_comments.append(error_comment)
+            errors_comment = "<hr />".join(error_comments)
+            file_comment_lines.append(errors_comment)
             file_comment_lines.append("</details>")
             comment += "<br />".join(file_comment_lines)
 
