@@ -15,6 +15,15 @@ runs:
         tool_versions: |
           actionlint ${{ inputs.actionlint-version }}
 
+    - name: Configure actionlint
+      shell: bash
+      run: |
+        cat << EOF > .github/actionlint.yaml
+        self-hosted-runner:
+          labels:
+            - aws-gpu-runner
+        EOF
+
     - name: Run actionlint and format output as JSON
       id: actionlint
       shell: bash
