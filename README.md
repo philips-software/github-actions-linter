@@ -1,18 +1,36 @@
-# Github Actions validator
+# Github Actions validator v2
 
 This repository contains an action to validate the Github Actions workflows.
 
 ## Description
 
-Under the hoods, it uses `action-validator` by [*mpalmer*](https://github.com/mpalmer/action-validator).
+Under the hood, it uses https://github.com/rhysd/actionlint
 
 The action steps are:
 
-- Check if workflow files have been modified, the below steps run only if this is true
-- Download `action-validator` using ASDF
+- Download `actionlint` using ASDF
 - Lint the workflows, and generate an output with the linted (and errored) files
 - Post this output on a PR comment
-- Cleanup the possibly modified files
+
+
+## Example
+
+```yaml
+permissions:
+  contents: read  # checkout
+  pull-requests: write  # post comment
+
+jobs:
+  actions-validator:
+    name: Run Github Actions validator
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Github Actions workflows
+        uses: CardioLogs/validate-github-actions@v2
+```
 
 
 ## Development

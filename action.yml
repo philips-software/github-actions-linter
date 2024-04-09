@@ -2,79 +2,85 @@ name: Github Actions validator
 description: Validate the Github Actions workflows
 
 inputs:
-  action-validator-version:
-    description: Version of Action-validator to use
-    default: 0.5.4
+  actionlint-version:
+    description: Version of actionlint to use
+    default: 1.6.27
 
 runs:
   using: "composite"
   steps:
-    - name: Compute changed files
-      uses: dorny/paths-filter@v3
-      id: filter
-      with:
-        filters: |
-          github:
-            - added|modified: .github/**
-
-    - name: Install action-validator with asdf
-      if: steps.filter.outputs.github == 'true'
+    - name: Install actionlint
       uses: asdf-vm/actions/install@v3
       with:
         tool_versions: |
-          action-validator ${{ inputs.action-validator-version }}
+          actionlint ${{ inputs.actionlint-version }}
 
-    - name: Lint Actions
-      if: steps.filter.outputs.github == 'true'
+    - name: Configure actionlint
       shell: bash
       run: |
-        echo -e '## :warning: Github Actions validator failed!\n' | tee actions-validator-outputs.txt
+        cat << EOF > .github/actionlint.yaml
+        self-hosted-runner:
+          labels:
+            - aws-gpu-runner
+        EOF
 
-        # Here we want to find all the Yaml files under .github/{workflows,actions}
-        # but we can't use 'find .github/workflows .github/actions'
-        # because it will fail if one of the folders doesn't exist (eg .github/actions is not always present)
-        find .github -type f \
-          -iwholename '.github/workflows/*.yml' -o -iwholename '.github/workflows/*.yaml' -o \
-          -iwholename '.github/actions/*.yml' -o -iwholename '.github/actions/*.yaml' \
-          | while read -r file; do
+    - name: Run actionlint and format output as JSON
+      id: actionlint
+      shell: bash
+      run: actionlint -format '{{json .}}' | tee actionlint_output.json
 
-            # We have to '|| true' or this command ends the loop in GHA
-            (action-validator "$file" 2>&1 || true) | tee actions-validator-tmp.txt
-
-            # If action-validator didn't produce outputs, it means there are no errors
-            test -z "$(cat actions-validator-tmp.txt)" && continue
-
-            echo -e "<details>\n<summary><code>$file</code></summary>\n<pre>" | tee -a actions-validator-outputs.txt
-            cat actions-validator-tmp.txt | tee -a actions-validator-outputs.txt
-            echo -e '\n</pre></details>' | tee -a actions-validator-outputs.txt
-        done
-
-        rm -f actions-validator-tmp.txt
-        if [[ $(cat actions-validator-outputs.txt | wc -l) -gt 2 ]]; then
+    - name: Set status
+      shell: bash
+      run: |
+        if [ -s actionlint_output.json ]; then
           exit 1
         fi
 
-    - name: Post results in PR (failure)
-      if: failure() && steps.filter.outputs.github == 'true'
-      uses: thollander/actions-comment-pull-request@v2
-      with:
-        filePath: actions-validator-outputs.txt
-        comment_tag: actions-validator
-    - name: Post results in PR (success)
-      if: success() && steps.filter.outputs.github == 'true'
-      uses: thollander/actions-comment-pull-request@v2
-      with:
-        message: "## :white_check_mark: Github Actions validator succeed!"
-        comment_tag: actions-validator
-
-    - name: Cleanup residual changes
+    - name: Generate comment
       if: success() || failure()
-      shell: bash
+      shell: python
       run: |
-        if git ls-files -m | grep -q ".tool-versions"; then
-          git checkout -- .tool-versions
-        fi
+        import json
 
-        if [[ -f "actions-validator-outputs.txt" ]]; then
-          rm -f actions-validator-outputs.txt
-        fi
+        with open("actionlint_output.json") as fd:
+            data = json.load(fd)
+
+        errors_by_file = {}
+        for error in data:
+            errors_by_file.setdefault(error["filepath"], []).append(error)
+
+        comment = ""
+        for file, errors in errors_by_file.items():
+            file_comment_lines = [f"<details><summary><code>{file}</code></summary>"]
+            error_comments = []
+            for error in errors:
+                url = f"https://github.com/${{ github.repository }}/blob/${{ github.sha }}/{file}#L{error['line']}"
+                snippet_lines = ["<pre>", *error["snippet"].split("\n"), "</pre>"]
+                error_comment = "<br />".join([
+                    error["message"],
+                    f"<a href={url}>View in file</a>",
+                    "\n".join(snippet_lines),
+                ])
+                error_comments.append(error_comment)
+            errors_comment = "<hr />".join(error_comments)
+            file_comment_lines.append(errors_comment)
+            file_comment_lines.append("</details>")
+            comment += "<br />".join(file_comment_lines)
+
+        with open("comment.md", "w") as fd:
+            fd.write("## :warning: Github Actions validator failed\n\n")
+            fd.write(comment)
+
+    - name: Post results in PR (failure)
+      if: failure()
+      uses: thollander/actions-comment-pull-request@v2
+      with:
+        filePath: comment.md
+        comment_tag: actions-validator
+
+    - name: Post results in PR (success)
+      if: success()
+      uses: thollander/actions-comment-pull-request@v2
+      with:
+        message: "## :white_check_mark: Github Actions validator passed"
+        comment_tag: actions-validator
