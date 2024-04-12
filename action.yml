@@ -36,7 +36,7 @@ runs:
           excludes="-e $(echo ${{ inputs.shellcheck-disable-codes }} | sed 's/^,//' | sed 's/,$//' | sed 's/,/ -e /g')"
         fi
         opts="$excludes"
-        echo "opts=${opts}" >> $GITHUB_ENV
+        echo "opts=${opts}" >> $GITHUB_OUTPUT
 
     - name: Run actionlint and format output as JSON
       id: actionlint
