@@ -29,6 +29,7 @@ runs:
 
     - name: Prepare shellcheck opts
       id: prepare-shellcheck-opts
+      shell: bash
       run: |
         excludes=""
         if [ -n "${{ inputs.shellcheck-disable-codes }}" ]; then
