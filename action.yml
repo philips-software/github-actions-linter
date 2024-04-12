@@ -61,7 +61,7 @@ runs:
 
         def add_shellcheck_link(message: str) -> str:
             shellcheck_url = "https://www.shellcheck.net/wiki"
-            return re.sub(r"shellcheck reported issue in this script: (SC\d+):", fr"[\1]({shellcheck_url}/\1)", message)
+            return re.sub(r"shellcheck reported issue in this script: (SC\d+):", fr"<a href='{shellcheck_url}/\1'>\1</a>", message)
 
         with open("actionlint_output.json") as fd:
             data = json.load(fd)
