@@ -59,9 +59,10 @@ runs:
         import json
         import re
 
-        def add_shellcheck_link(message: str) -> str:
+        def get_shellcheck_link(message: str) -> str | None:
             shellcheck_url = "https://www.shellcheck.net/wiki"
-            return re.sub(r"(shellcheck reported issue in this script: )(SC\d+):", fr"\1<a href='{shellcheck_url}/\2'>\2</a>:", message)
+            if match := re.search(r"shellcheck report issue in this script: (SC\d+)", message):
+                return f"{shellcheck_url}/{match.group(1)}"
 
         with open("actionlint_output.json") as fd:
             data = json.load(fd)
@@ -77,11 +78,14 @@ runs:
             for error in errors:
                 url = f"https://github.com/${{ github.repository }}/blob/${{ github.sha }}/{file}#L{error['line']}"
                 snippet_lines = ["<pre>", *error["snippet"].split("\n"), "</pre>"]
-                error_comment = "<br />".join([
-                    add_shellcheck_link(error["message"]),
+                error_comment_lines = [error["message"]]
+                if shellcheck_link := get_shellcheck_link(error["message"]):
+                    error_comment_lines.append(f"<a href={shellcheck_link}>View shellcheck error</a>")
+                error_comment_lines.extend([
                     f"<a href={url}>View in file</a>",
                     "\n".join(snippet_lines),
                 ])
+                error_comment = "<br />".join(error_comment_lines)
                 error_comments.append(error_comment)
             errors_comment = "<hr />".join(error_comments)
             file_comment_lines.append(errors_comment)
