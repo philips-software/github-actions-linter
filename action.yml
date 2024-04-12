@@ -57,6 +57,11 @@ runs:
       shell: python
       run: |
         import json
+        import re
+
+        def add_shellcheck_link(message: str) -> str:
+            shellcheck_url = "https://www.shellcheck.net/wiki"
+            return re.sub(r"shellcheck reported issue in this script: (SC\d+):", fr"[\1]({shellcheck_url}/\1)", message)
 
         with open("actionlint_output.json") as fd:
             data = json.load(fd)
@@ -73,7 +78,7 @@ runs:
                 url = f"https://github.com/${{ github.repository }}/blob/${{ github.sha }}/{file}#L{error['line']}"
                 snippet_lines = ["<pre>", *error["snippet"].split("\n"), "</pre>"]
                 error_comment = "<br />".join([
-                    error["message"],
+                    add_shellcheck_link(error["message"]),
                     f"<a href={url}>View in file</a>",
                     "\n".join(snippet_lines),
                 ])
