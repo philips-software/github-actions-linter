@@ -61,7 +61,7 @@ runs:
 
         def get_shellcheck_link(message: str) -> str | None:
             shellcheck_url = "https://www.shellcheck.net/wiki"
-            if match := re.search(r"shellcheck report issue in this script: (SC\d+)", message):
+            if match := re.search(r"shellcheck reported issue in this script: (SC\d+)", message):
                 return f"{shellcheck_url}/{match.group(1)}"
 
         with open("actionlint_output.json") as fd:
