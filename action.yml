@@ -47,10 +47,7 @@ runs:
 
     - name: Set status
       shell: bash
-      run: |
-        if [ -s actionlint_output.json ]; then
-          exit 1
-        fi
+      run: jq -e 'length == 0' actionlint_output.json
 
     - name: Generate comment
       if: success() || failure()
