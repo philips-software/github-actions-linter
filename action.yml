@@ -30,7 +30,10 @@ runs:
     - name: Prepare shellcheck opts
       id: prepare-shellcheck-opts
       run: |
-        excludes="-e $(echo ${{ inputs.shellcheck-disable-codes }} | | sed 's/^,//' | sed 's/,$//' | sed 's/,/ -e /g')"
+        excludes=""
+        if [ -n "${{ inputs.shellcheck-disable-codes }}" ]; then
+          excludes="-e $(echo ${{ inputs.shellcheck-disable-codes }} | sed 's/^,//' | sed 's/,$//' | sed 's/,/ -e /g')"
+        fi
         opts="$excludes"
         echo "opts=${opts}" >> $GITHUB_ENV
 
