@@ -33,7 +33,7 @@ runs:
       run: |
         excludes=""
         if [ -n "${{ inputs.shellcheck-disable-codes }}" ]; then
-          excludes="-e $(echo ${{ inputs.shellcheck-disable-codes }} | sed 's/^,//' | sed 's/,$//' | sed 's/,/ -e /g')"
+          excludes="-e $(echo ${{ inputs.shellcheck-disable-codes }} | sed -e 's/^,//' -e 's/,$//' -e sed 's/,/ -e /g')"
         fi
         opts="$excludes"
         echo "opts=${opts}" >> $GITHUB_OUTPUT
