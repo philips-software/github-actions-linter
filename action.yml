@@ -5,6 +5,9 @@ inputs:
   actionlint-version:
     description: Version of actionlint to use
     default: 1.6.27
+  shellcheck-disable-codes:
+    description: Comma-separated list of shellcheck codes to ignore (see https://www.shellcheck.net/wiki/Ignore)
+    default: ""
 
 runs:
   using: "composite"
@@ -24,23 +27,39 @@ runs:
             - aws-gpu-runner
         EOF
 
+    - name: Prepare shellcheck opts
+      id: prepare-shellcheck-opts
+      shell: bash
+      run: |
+        excludes=""
+        if [ -n "${{ inputs.shellcheck-disable-codes }}" ]; then
+          excludes="-e $(echo ${{ inputs.shellcheck-disable-codes }} | sed -e 's/^,//' -e 's/,$//' -e 's/,/ -e /g')"
+        fi
+        opts="$excludes"
+        echo "opts=${opts}" >> $GITHUB_OUTPUT
+
     - name: Run actionlint and format output as JSON
       id: actionlint
       shell: bash
       run: actionlint -format '{{json .}}' | tee actionlint_output.json
+      env:
+        SHELLCHECK_OPTS: ${{ steps.prepare-shellcheck-opts.outputs.opts }}
 
     - name: Set status
       shell: bash
-      run: |
-        if [ -s actionlint_output.json ]; then
-          exit 1
-        fi
+      run: jq -e 'length == 0' actionlint_output.json
 
     - name: Generate comment
       if: success() || failure()
       shell: python
       run: |
         import json
+        import re
+
+        def get_shellcheck_link(message: str) -> str | None:
+            shellcheck_url = "https://www.shellcheck.net/wiki"
+            if match := re.search(r"shellcheck reported issue in this script: (SC\d+)", message):
+                return f"{shellcheck_url}/{match.group(1)}"
 
         with open("actionlint_output.json") as fd:
             data = json.load(fd)
@@ -56,11 +75,14 @@ runs:
             for error in errors:
                 url = f"https://github.com/${{ github.repository }}/blob/${{ github.sha }}/{file}#L{error['line']}"
                 snippet_lines = ["<pre>", *error["snippet"].split("\n"), "</pre>"]
-                error_comment = "<br />".join([
-                    error["message"],
+                error_comment_lines = [error["message"]]
+                if shellcheck_link := get_shellcheck_link(error["message"]):
+                    error_comment_lines.append(f"<a href={shellcheck_link}>View shellcheck error</a>")
+                error_comment_lines.extend([
                     f"<a href={url}>View in file</a>",
                     "\n".join(snippet_lines),
                 ])
+                error_comment = "<br />".join(error_comment_lines)
                 error_comments.append(error_comment)
             errors_comment = "<hr />".join(error_comments)
             file_comment_lines.append(errors_comment)
