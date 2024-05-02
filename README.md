@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate Github Actions workflows
-        uses: CardioLogs/validate-github-actions@v2
+        uses: philips-software/github-actions-linter@v2
 ```
 
 ## ShellCheck rules
@@ -41,7 +41,7 @@ Although we don't recommend it, you can disable specific ShellCheck rules for al
 
 ```yaml
 - name: Validate Github Actions workflows
-  uses: CardioLogs/validate-github-actions@v2
+  uses: philips-software/github-actions-linter@v2
   with:
     shellcheck-disable-codes: SC2052,SC2034
 ```
