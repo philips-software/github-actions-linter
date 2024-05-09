@@ -25,6 +25,8 @@ runs:
         self-hosted-runner:
           labels:
             - aws-gpu-runner
+            - GH-Cardiolib
+            - GH-Playwright
         EOF
 
     - name: Prepare shellcheck opts
