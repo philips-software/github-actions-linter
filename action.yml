@@ -45,7 +45,10 @@ runs:
       shell: bash
       run: |
         # Reference: https://github.com/actions/download-artifact#outputs
-        actionlint -ignore 'property "download-path" is not defined in object type {}' -format '{{json .}}' | tee actionlint_output.json
+        actionlint \
+          -ignore 'property "download-path" is not defined in object type {}' \
+          -format '{{json .}}' \
+        | tee actionlint_output.json
       env:
         SHELLCHECK_OPTS: ${{ steps.prepare-shellcheck-opts.outputs.opts }}
 
