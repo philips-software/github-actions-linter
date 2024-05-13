@@ -43,7 +43,12 @@ runs:
     - name: Run actionlint and format output as JSON
       id: actionlint
       shell: bash
-      run: actionlint -format '{{json .}}' | tee actionlint_output.json
+      run: |
+        # Reference: https://github.com/actions/download-artifact#outputs
+        actionlint \
+          -ignore 'property "download-path" is not defined in object type {}' \
+          -format '{{json .}}' \
+        | tee actionlint_output.json
       env:
         SHELLCHECK_OPTS: ${{ steps.prepare-shellcheck-opts.outputs.opts }}
 
