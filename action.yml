@@ -8,6 +8,9 @@ inputs:
   shellcheck-disable-codes:
     description: Comma-separated list of shellcheck codes to ignore (see https://www.shellcheck.net/wiki/Ignore)
     default: ""
+  self-hosted-runners:
+    description: Comma-separated list of self-hosted runner labels
+    default: ""
 
 runs:
   using: "composite"
@@ -19,13 +22,33 @@ runs:
           actionlint ${{ inputs.actionlint-version }}
 
     - name: Configure actionlint
-      shell: bash
+      shell: python
       run: |
-        cat << EOF > .github/actionlint.yaml
-        self-hosted-runner:
-          labels:
-            - aws-gpu-runner
-        EOF
+        import yaml
+        from pathlib import Path
+
+        config_path = Path(".github/actionlint.yaml")
+
+        def get_config():
+            if not config_path.is_file():
+                return {}
+            with config_path.open() as fd:
+                return yaml.safe_load(fd)
+
+        def save_config(config):
+            with config_path.open("w") as fd:
+                yaml.safe_dump(config, fd)
+
+        config = get_config()
+        labels = "${{ inputs.self-hosted-runners }}".split(",")
+        config.setdefault("self-hosted-runner", {}).setdefault("labels", []).extend(labels)
+        # Deduplicate labels
+        config["self-hosted-runner"]["labels"] = list(set(config["self-hosted-runner"]["labels"]))
+        save_config(config)
+
+    - name: Show config
+      shell: bash
+      run: cat .github/actionlint.yaml
 
     - name: Prepare shellcheck opts
       id: prepare-shellcheck-opts
@@ -33,6 +56,7 @@ runs:
       run: |
         excludes=""
         if [ -n "${{ inputs.shellcheck-disable-codes }}" ]; then
+          # convert the comma-separated list to a list of -e flags
           excludes="-e $(echo ${{ inputs.shellcheck-disable-codes }} | sed -e 's/^,//' -e 's/,$//' -e 's/,/ -e /g')"
         fi
         opts="$excludes"
@@ -41,7 +65,12 @@ runs:
     - name: Run actionlint and format output as JSON
       id: actionlint
       shell: bash
-      run: actionlint -format '{{json .}}' | tee actionlint_output.json
+      run: |
+        # Reference: https://github.com/actions/download-artifact#outputs
+        actionlint \
+          -ignore 'property "download-path" is not defined in object type {}' \
+          -format '{{json .}}' \
+        | tee actionlint_output.json
       env:
         SHELLCHECK_OPTS: ${{ steps.prepare-shellcheck-opts.outputs.opts }}
 
