@@ -132,3 +132,13 @@ runs:
       with:
         message: "## :white_check_mark: Github Actions validator passed"
         comment_tag: actions-validator
+
+    - name: Post results as summary (failure)
+      if: failure()
+      shell: bash
+      run: cat comment.md >> $GITHUB_STEP_SUMMARY
+
+    - name: Post results as summary (success)
+      if: success()
+      shell: bash
+      run: echo "## :white_check_mark: Github Actions validator passed" >> $GITHUB_STEP_SUMMARY
