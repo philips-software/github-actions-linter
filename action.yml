@@ -42,6 +42,8 @@ runs:
         config = get_config()
         labels = "${{ inputs.self-hosted-runners }}".split(",")
         config.setdefault("self-hosted-runner", {}).setdefault("labels", []).extend(labels)
+        # Deduplicate labels
+        config["self-hosted-runner"]["labels"] = list(set(config["self-hosted-runner"]["labels"]))
         save_config(config)
 
     - name: Show config
