@@ -27,7 +27,7 @@ runs:
         import yaml
         from pathlib import Path
 
-        config_path = Path(.github/actionlint.yaml)
+        config_path = Path(".github/actionlint.yaml")
 
         def get_config():
             if not config_path.is_file():
