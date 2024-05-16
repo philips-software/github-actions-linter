@@ -24,13 +24,29 @@ runs:
     - name: Configure actionlint
       shell: python
       run: |
+        import yaml
+        from pathlib import Path
+
+        config_path = Path(.github/actionlint.yaml)
+
+        def get_config():
+            if not config_path.is_file():
+                return {}
+            with config_path.open() as fd:
+                return yaml.safe_load(fd)
+
+        def save_config(config):
+            with config_path.open("w") as fd:
+                yaml.safe_dump(config, fd)
+
+        config = get_config()
         labels = "${{ inputs.self-hosted-runners }}".split(",")
-        config = f"""\
-        self-hosted-runner:
-          labels: {labels}
-        """
-        with open(".github/actionlint.yaml", "w") as fd:
-            fd.write(config)
+        config.setdefault("self-hosted-runner", {}).setdefault("labels", []).extend(labels)
+        save_config(config)
+
+    - name: Show config
+      shell: bash
+      run: cat .github/actionlint.yaml
 
     - name: Prepare shellcheck opts
       id: prepare-shellcheck-opts
