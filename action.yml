@@ -54,6 +54,7 @@ runs:
       run: |
         excludes=""
         if [ -n "${{ inputs.shellcheck-disable-codes }}" ]; then
+          # convert the comma-separated list to a list of -e flags
           excludes="-e $(echo ${{ inputs.shellcheck-disable-codes }} | sed -e 's/^,//' -e 's/,$//' -e 's/,/ -e /g')"
         fi
         opts="$excludes"
@@ -132,14 +133,3 @@ runs:
       with:
         message: "## :white_check_mark: Github Actions validator passed"
         comment_tag: actions-validator
-
-    - name: Post results as summary (failure)
-      if: failure()
-      shell: bash
-      run: cat comment.md >> "$GITHUB_STEP_SUMMARY"
-
-    - name: Post results as summary (success)
-      if: success()
-      shell: bash
-      run: |
-        echo "## :white_check_mark: Github Actions validator passed" >> "$GITHUB_STEP_SUMMARY"
