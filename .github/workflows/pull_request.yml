@@ -21,4 +21,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate Github Actions workflows
-        uses: philips-software/github-actions-linter@armand/backport-changes
+        uses: philips-software/github-actions-linter@main
